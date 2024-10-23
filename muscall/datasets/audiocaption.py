@@ -45,7 +45,7 @@ class AudioCaptionDataset(Dataset):
             self.audio_ids = [i["audio_id"] for i in self.samples]
             self.captions = [i["caption"].strip() for i in self.samples]
             self.audio_paths = [os.path.join(
-                self.audio_dir, i["audio_path"]) for i in self.samples]
+                self.audio_dir, i["audio_path"].replace("data", "audio").replace("data_aug2", "audio")) for i in self.samples]
 
     def _build_tokenizer(self):
         # using tolenizers from pretrained models to reuse their vocab

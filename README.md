@@ -22,9 +22,57 @@ pip install -e .
 ### MusicBench Prepare:
 
 ```bash
+cd /home/Nakata/muscall/data/datasets/
+mkdir musicbench_tmp
+cd /home/Nakata/muscall/data/datasets/musicbench_tmp
 wget https://huggingface.co/datasets/amaai-lab/MusicBench/resolve/main/MusicBench.tar.gz
 tar -zxvf MusicBench.tar.gz
+rm -rf MusicBench.tar.gz
+mv  /home/Nakata/muscall/data/datasets/musicbench_tmp/datashare/data/* /home/Nakata/muscall/data/datasets/musicbench_tmp/datashare/data_aug2
+rm -rf /home/Nakata/muscall/data/datasets/musicbench_tmp/datashare/data/
+mkdir audio
 ```
+
+```python
+import os
+import numpy as np
+from scipy.io import wavfile
+
+def convert_wav_to_npy_in_directory(input_dir, output_dir):
+    # ディレクトリBが存在しない場合は作成
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # ディレクトリA内のすべての.wavファイルを取得
+    for file_name in os.listdir(input_dir):
+        if file_name.endswith(".wav"):
+            # WAVファイルのフルパス
+            wav_path = os.path.join(input_dir, file_name)
+
+            # 出力するnpyファイルのフルパス (拡張子をnpyに変更)
+            npy_filename = os.path.splitext(file_name)[0] + ".npy"
+            npy_path = os.path.join(output_dir, npy_filename)
+
+            # WAVファイルの読み込み
+            sample_rate, data = wavfile.read(wav_path)
+
+            # NumPy配列として保存
+            np.save(npy_path, data)
+
+            print(f"'{wav_path}' を '{npy_path}' に変換しました。")
+
+# ディレクトリAとディレクトリBを指定
+input_directory = "/datashare/data_aug2"  # 例: 'A' をWAVファイルがあるディレクトリのパスに変更
+output_directory = "/audio"  # 例: 'B' を保存先ディレクトリのパスに変更
+
+# 変換実行
+convert_wav_to_npy_in_directory(input_directory, output_directory)
+```
+
+```bash
+rm -rf /home/Nakata/muscall/data/datasets/musicbench_tmp/datashare/data_aug2
+```
+
 
 ### Details
 
