@@ -1,5 +1,3 @@
-<div  align="center">
-
 # Audio-Text Contrastive Learining for Muisic
 
 ## Setup
