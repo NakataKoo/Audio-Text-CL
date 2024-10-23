@@ -1,0 +1,10 @@
+.idea/*
+*.egg-info/
+**/__pycache__/
+.vector_cache/
+.ipynb_checkpoints/
+save/
+**venv
+.git
+data/datasets/musicbench/
+data/datasets/musicbench_tmp/
