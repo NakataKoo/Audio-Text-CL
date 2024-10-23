@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 import torch
+import tqdm
 
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -33,7 +34,7 @@ class MusCALLTrainer(BaseTrainer):
         self.logger.write("Loading dataset")
         dataset_name = self.config.dataset_config.dataset_name
 
-        if dataset_name == "audiocaption":
+        if dataset_name == "audiocaption" or "musicbench":
             self.train_dataset = AudioCaptionDataset(self.config.dataset_config)
             self.val_dataset = AudioCaptionDataset(self.config.dataset_config, dataset_type="val")
         else:
@@ -59,13 +60,16 @@ class MusCALLTrainer(BaseTrainer):
         model_name = self.config.model_config.model_name
 
         if model_name == "muscall":
-            self.model = MusCALL(self.config.model_config)
+            self.model = MusCALL(self.config.model_config).to(self.device)
         else:
             raise ValueError("{} model is not supported.".format(model_name))
 
         self.print_parameters()
 
-        self.model.to(self.device)
+        if torch.cuda.device_count() > 1:
+            print("Use %dGPUS" % torch.cuda.device_count())
+            self.model = torch.nn.DataParallel(self.model, device_ids=[0, 1])
+            # self.model = self.model.module if isinstance(self.model, torch.nn.DataParallel) else self.model
 
     def build_optimizer(self):
         self.logger.write("Building optimizer")
@@ -172,7 +176,9 @@ class MusCALLTrainer(BaseTrainer):
         else:
             self.model.eval()
 
-        for i, batch in enumerate(data_loader):
+        pbar = tqdm.tqdm(data_loader, disable=False, leave=True)
+
+        for i, batch in enumerate(pbar):
             batch = tuple(t.to(device=self.device, non_blocking=True) for t in batch)
             audio_id, input_audio, text_input_ids, _, _, data_idx = batch
 
@@ -195,13 +201,17 @@ class MusCALLTrainer(BaseTrainer):
                 input_audio = augment_chain(input_audio.unsqueeze(1), audio_data_config.sr).squeeze(1)
 
             # Cast operations to mixed precision
-            with torch.amp.autocast(enabled=self.config.training.amp):
+            with torch.amp.autocast(enabled=self.config.training.amp, device_type="cuda"):
                 loss = self.model(
                     input_audio,
                     text_input_ids,
                     original_audio=original_audio,
                     sentence_sim=sentence_sim,
                 )
+
+                if isinstance(loss, torch.Tensor) and loss.dim() > 0:
+                    loss = loss.mean()
+                
 
             if is_training:
                 if self.config.training.amp:
@@ -213,10 +223,16 @@ class MusCALLTrainer(BaseTrainer):
                     self.optimizer.step()
 
                 # clamp temperature scaling if over log(100)
-                if self.model.logit_scale.item() > np.log(100):
-                    self.model.logit_scale.data = torch.clamp(
-                        self.model.logit_scale.data, max=np.log(100)
-                    )
+                if torch.cuda.device_count() > 1:
+                    if self.model.module.logit_scale.item() > np.log(100):
+                        self.model.module.logit_scale.data = torch.clamp(
+                            self.model.module.logit_scale.data, max=np.log(100)
+                        )
+                else:
+                    if self.model.logit_scale.item() > np.log(100):
+                        self.model.logit_scale.data = torch.clamp(
+                            self.model.logit_scale.data, max=np.log(100)
+                        )
 
                 self.scheduler.step()
                 self.optimizer.zero_grad()

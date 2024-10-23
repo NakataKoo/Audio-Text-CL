@@ -46,7 +46,7 @@ if __name__ == "__main__":
         # 1. Load config (base + dataset + model)
         base_conf = load_conf(params.config_path)
 
-        if params.dataset == "audiocaption":
+        if params.dataset == "audiocaption" or "musicbench":
             dataset_conf_path = os.path.join(base_conf.env.base_dir, AudioCaptionDataset.config_path())
         else:
             raise ValueError("{} dataset not supported".format(params.dataset))
