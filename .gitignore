@@ -6,5 +6,4 @@
 save/
 **venv
 .git
-data/datasets/musicbench/
-data/datasets/musicbench_tmp/
+data/datasets/musicbench/audio/
